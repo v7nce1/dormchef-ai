@@ -260,19 +260,42 @@ export default function DormChef() {
         const pantryStr = pantry.length ? ` Also: ${pantry.slice(0,8).join(", ")}.` : "";
         messages = [{ role:"user", content:`Ingredients: ${textInput}.${pantryStr}${user?.dietPrefs?.length ? ` Prefs: ${user.dietPrefs.join(", ")}.` : ""} JSON only.` }];
       }
+      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        notify("API key missing — add VITE_ANTHROPIC_API_KEY to your .env file", "🔑");
+        setCookScreen("home");
+        return;
+      }
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:SYSTEM_PROMPT, messages })
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1000, system: SYSTEM_PROMPT, messages }),
       });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error("Anthropic API error:", response.status, errData);
+        notify(`API error ${response.status} — check console for details`, "❌");
+        setCookScreen("home");
+        return;
+      }
+
       const data = await response.json();
-      const text = data.content?.map(b => b.text||"").join("") || "";
-      const clean = text.replace(/```json|```/g,"").trim();
+      const text = data.content?.map(b => b.text || "").join("") || "";
+      const clean = text.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
       setRecipes(parsed); setActiveRecipe(0);
       setCookScreen("results");
       addXP(10, "Found new recipes");
     } catch (err) {
-      notify("Couldn't generate recipes. Try again!", "❌");
+      console.error("Recipe generation error:", err);
+      notify("Couldn't generate recipes — check browser console for details.", "❌");
       setCookScreen("home");
     }
   }, [inputMode, imageData, textInput, pantry, user]);

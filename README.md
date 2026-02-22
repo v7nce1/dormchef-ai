@@ -2,13 +2,7 @@
 
 # 🍳 DormChef AI
 
-### Quick Campus Cooking Assistant — Powered by Claude AI
-
-[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white)](https://reactjs.org)
-[![Claude API](https://img.shields.io/badge/Claude-Sonnet_4.5-ff7a20?style=flat-square&logo=anthropic&logoColor=white)](https://anthropic.com)
-[![License](https://img.shields.io/badge/License-MIT-4caf7d?style=flat-square)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
-[![Stripe](https://img.shields.io/badge/Payments-Stripe-635bff?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com)
+### Quick Campus Cooking Assistant
 
 **Snap your fridge. Get 3 recipes. Cook in minutes.**
 

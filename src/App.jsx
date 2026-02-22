@@ -246,26 +246,37 @@ export default function DormChef() {
 
   const analyzeIngredients = useCallback(async () => {
     setCookScreen("analyzing");
+
+    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      notify("API key missing — add VITE_ANTHROPIC_API_KEY to Vercel env vars", "🔑");
+      setCookScreen("home");
+      return;
+    }
+
     try {
-      let messages;
-      if (inputMode === "photo" && imageData) {
-        const pantryStr = pantry.length ? ` Also in my pantry I have: ${pantry.slice(0,8).join(", ")}.` : "";
-        const dietStr = user?.dietPrefs?.length ? ` Dietary preferences: ${user.dietPrefs.join(", ")}.` : "";
-        const allergyStr = user?.allergies?.length ? ` Allergies: ${user.allergies.join(", ")}.` : "";
-        messages = [{ role:"user", content:[
-          { type:"image", source:{ type:"base64", media_type:imageData.mediaType, data:imageData.base64 }},
-          { type:"text", text:`Identify ingredients visible.${pantryStr}${dietStr}${allergyStr} Generate 1-3 dorm recipes. JSON only.` }
-        ]}];
-      } else {
-        const pantryStr = pantry.length ? ` Also: ${pantry.slice(0,8).join(", ")}.` : "";
-        messages = [{ role:"user", content:`Ingredients: ${textInput}.${pantryStr}${user?.dietPrefs?.length ? ` Prefs: ${user.dietPrefs.join(", ")}.` : ""} JSON only.` }];
-      }
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        notify("API key missing — add VITE_ANTHROPIC_API_KEY to your .env file", "🔑");
-        setCookScreen("home");
-        return;
-      }
+      // Build user context string
+      const extras = [
+        pantry.length ? `Pantry staples: ${pantry.slice(0, 8).join(", ")}.` : "",
+        user?.dietPrefs?.length ? `Diet: ${user.dietPrefs.join(", ")}.` : "",
+        user?.allergies?.length ? `Allergies: ${user.allergies.join(", ")}.` : "",
+      ].filter(Boolean).join(" ");
+
+      // Build messages — text only for now (vision requires larger models)
+      const userText = inputMode === "photo" && imageData
+        ? `I took a photo of my fridge/pantry. ${extras} Based on common dorm ingredients, generate 1-3 easy recipes. Return JSON array only.`
+        : `I have these ingredients: ${textInput}. ${extras} Generate 1-3 easy dorm recipes. Return JSON array only.`;
+
+      const messages = [{ role: "user", content: userText }];
+
+      const body = {
+        model: "claude-3-haiku-20240307",
+        max_tokens: 1024,
+        system: "You are DormChef AI, a fun cooking assistant for college students. When given ingredients, generate EXACTLY 1-3 recipes as a valid JSON array. Return ONLY the JSON array, no markdown fences, no explanation. Each recipe: {name, emoji, description, prepTime, cookTime, difficulty, costEstimate, calories, healthTags, dietTags, ingredients, missingIngredients, substitutions:[{missing,sub,reason}], steps, tips, flavorPairings, cookingHack}. Keep recipes dorm-friendly, cheap ($1-8), genuinely delicious.",
+        messages,
+      };
+
+      console.log("Sending to Anthropic:", { model: body.model, messageLength: userText.length });
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -275,27 +286,41 @@ export default function DormChef() {
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify({ model: "claude-3-haiku-20240307", max_tokens: 1000, system: SYSTEM_PROMPT, messages }),
+        body: JSON.stringify(body),
       });
 
+      const data = await response.json();
+      console.log("Anthropic response:", response.status, data);
+
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        console.error("Anthropic API error:", response.status, errData);
-        notify(`API error ${response.status} — check console for details`, "❌");
+        const msg = data?.error?.message || JSON.stringify(data);
+        console.error("API Error detail:", msg);
+        notify(`Error ${response.status}: ${msg.slice(0, 80)}`, "❌");
         setCookScreen("home");
         return;
       }
 
-      const data = await response.json();
-      const text = data.content?.map(b => b.text || "").join("") || "";
-      const clean = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
-      setRecipes(parsed); setActiveRecipe(0);
+      const raw = data.content?.map(b => b.text || "").join("") || "";
+      console.log("Raw AI response:", raw);
+
+      // Strip any accidental markdown fences
+      const clean = raw.replace(/```json|```/gi, "").trim();
+
+      // Find the JSON array even if there's surrounding text
+      const match = clean.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error("No JSON array found in response");
+
+      const parsed = JSON.parse(match[0]);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty recipe array");
+
+      setRecipes(parsed);
+      setActiveRecipe(0);
       setCookScreen("results");
       addXP(10, "Found new recipes");
+
     } catch (err) {
-      console.error("Recipe generation error:", err);
-      notify("Couldn't generate recipes — check browser console for details.", "❌");
+      console.error("Recipe generation failed:", err);
+      notify(`Failed: ${err.message || "Unknown error"} — check F12 console`, "❌");
       setCookScreen("home");
     }
   }, [inputMode, imageData, textInput, pantry, user]);

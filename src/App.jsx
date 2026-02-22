@@ -270,7 +270,7 @@ export default function DormChef() {
       const messages = [{ role: "user", content: userText }];
 
       const body = {
-        model: "claude-4-6-sonnet-latest",
+        model: "claude-3-5-sonnet-20240620",
         max_tokens: 1024,
         system: "You are DormChef AI, a fun cooking assistant for college students. When given ingredients, generate EXACTLY 1-3 recipes as a valid JSON array. Return ONLY the JSON array, no markdown fences, no explanation. Each recipe: {name, emoji, description, prepTime, cookTime, difficulty, costEstimate, calories, healthTags, dietTags, ingredients, missingIngredients, substitutions:[{missing,sub,reason}], steps, tips, flavorPairings, cookingHack}. Keep recipes dorm-friendly, cheap ($1-8), genuinely delicious.",
         messages,

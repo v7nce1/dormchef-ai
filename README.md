@@ -345,10 +345,9 @@ MIT © 2025 DormChef AI
 
 <div align="center">
 
-**Built with 🍳 and Claude AI**
 
 *If this helped you, star the repo — it means a lot!*
 
-[![Star on GitHub](https://img.shields.io/github/stars/yourusername/dormchef-ai?style=social)](https://github.com/yourusername/dormchef-ai)
+[![Star on GitHub](https://img.shields.io/github/stars/v7nce1/dormchef-ai?style=social)](https://github.com/v7nce1/dormchef-ai)
 
 </div>
